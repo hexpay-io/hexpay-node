@@ -1,0 +1,56 @@
+name: regenerate sdk
+
+on:
+  push:
+    branches-ignore:
+      - main
+    paths:
+      - 'oapi/**'
+      - 'openapi-ts.config.ts'
+      - 'gen.Dockerfile'
+      - 'Makefile'
+      - '.github/workflows/generate.yml'
+
+concurrency:
+  group: regen-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build generator image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: gen.Dockerfile
+          tags: hexpay-node-gen:latest
+          load: true
+          cache-from: type=gha,scope=gen
+          cache-to: type=gha,scope=gen,mode=max
+
+      - name: Regenerate SDK
+        run: make gen
+
+      - name: Commit regenerated SDK
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          if git diff --quiet src; then
+            echo "No changes to commit"
+          else
+            git add src
+            git commit -m "chore: regenerate sdk"
+            git push
+          fi
