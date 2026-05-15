@@ -39,6 +39,13 @@ jobs:
           fi
           echo "Tag v$tag matches package.json version $pkg"
 
+      - name: Upgrade npm for Trusted Publishing OIDC
+        # Trusted Publishing OIDC support on the npm CLI landed in npm 11.5.1
+        # (Aug 2025). Node 20 ships with npm 10.x, which silently skips OIDC
+        # auth on publish and the registry returns 404 as if the package
+        # doesn't exist.
+        run: npm install -g npm@latest
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 

@@ -179,12 +179,4 @@ review.
 Releases are triggered by pushing a `v*` tag matching the version in
 `package.json`. The [`release.yml`](.github/workflows/release.yml) workflow
 verifies the match (and fails if not), builds, and publishes to npm via npm's
-Trusted Publishing (OIDC) — no `NPM_TOKEN` stored in repo secrets.
-
-One-time setup on npmjs.com: go to the org/package settings → Trusted Publishers
-→ add this GitHub repository and `release.yml` as the workflow file. A fallback
-config using `NPM_TOKEN` is documented inline in the workflow file.
-
-## License
-
-Proprietary. © HexPay.
+Trusted Publishing (OIDC).
