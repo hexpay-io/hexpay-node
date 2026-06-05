@@ -83,10 +83,10 @@ missing or invalid, the API returns `401 Unauthorized`.
 
 ## Idempotency
 
-Every `POST` request (currently `createPayment` and `cancelPayment`) **requires**
-an `X-Idempotency-Key` header containing a **UUID v4**. The server uses this key
-to deduplicate retried requests, so a transient network failure cannot turn into
-a duplicate payment.
+`POST` requests (`createPayment` and `cancelPayment`) **optionally** accept an
+`X-Idempotency-Key` header containing a UUID. When provided, the
+server deduplicates requests within a 24-hour window, so a transient network
+failure cannot turn a retry into a duplicate payment.
 
 Two rules — internalize both:
 

@@ -96,9 +96,9 @@ Two workflows under `.github/workflows/`:
 
 ## Idempotency contract
 
-Every `POST` request requires an `X-Idempotency-Key` header containing a UUID v4.
-In the generated SDK this header is passed via the `headers` object of each
-operation's options:
+`POST` requests (`createPayment`, `cancelPayment`) **optionally** accept an
+`X-Idempotency-Key` header containing a UUID. In the generated SDK
+this header is passed via the `headers` object of each operation's options:
 
 ```ts
 import { randomUUID } from 'node:crypto';
