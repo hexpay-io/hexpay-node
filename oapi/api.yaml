@@ -1,9 +1,6 @@
 openapi: 3.0.3
 info:
   title: HexPay Merchant API
-  license:
-    name: Proprietary
-    url: https://hexpay.io/terms
   description: |
     HexPay Merchant API for cryptocurrency payment processing on the TON blockchain.
 
@@ -16,11 +13,10 @@ info:
     ```
 
     ## Idempotency
-    All `POST` requests **require** an `X-Idempotency-Key` header containing a UUID v4.
-    This guarantees that retrying a request (e.g., due to a network failure) will not
-    create duplicate resources. The server stores the result for each idempotency key
-    for 24 hours and returns the cached response for any repeated request with the same key.
-    Generate a fresh key for each logically distinct operation.
+    `POST` requests support an optional `X-Idempotency-Key` header containing a UUID.
+    When provided, the server stores the result for each idempotency key for 24 hours and
+    returns the cached response for any repeated request with the same key, preventing
+    duplicate resources on retry. Generate a fresh key for each logically distinct operation.
 
     ## Payment Lifecycle
 
@@ -118,9 +114,9 @@ info:
 
 servers:
   - url: https://api.hexpay.io
-    description: Production server
-  - url: http://localhost/merchant
-    description: Local server
+    description: Production merchant server
+  - url: https://api.demo.hexpay.io
+    description: Production merchant demo server
 
 tags:
   - name: Payments
@@ -465,6 +461,7 @@ paths:
                         order_id: "order-2026-00123"
                         amount: "100.00"
                         currency: "USD"
+                        checkoutURL: "https://payment.hexpay.io/019327c6-2058-7901-b234-56789abcdeff"
                         timer:
                           createdAt: "2026-01-20T10:00:00Z"
                           expiresAt: "2026-01-20T10:15:00Z"
@@ -473,6 +470,7 @@ paths:
                         order_id: "order-2026-00124"
                         amount: "50.00"
                         currency: "EUR"
+                        checkoutURL: "https://payment.hexpay.io/019327c6-1234-7901-b234-56789abcde00"
                         timer:
                           createdAt: "2026-01-20T09:30:00Z"
                           expiresAt: "2026-01-20T09:45:00Z"
@@ -490,6 +488,7 @@ paths:
                         order_id: "order-2026-00123"
                         amount: "100.00"
                         currency: "USD"
+                        checkoutURL: "https://payment.hexpay.io/019327c6-2058-7901-b234-56789abcdeff"
                         timer:
                           createdAt: "2026-01-20T10:00:00Z"
                           expiresAt: "2026-01-20T10:15:00Z"
@@ -580,6 +579,7 @@ paths:
                     order_id: "order-2026-00123"
                     amount: "100.00"
                     currency: "USD"
+                    checkoutURL: "https://payment.hexpay.io/019327c6-2058-7901-b234-56789abcdeff"
                     timer:
                       createdAt: "2026-01-20T10:00:00Z"
                       expiresAt: "2026-01-20T10:15:00Z"
@@ -593,6 +593,7 @@ paths:
                     order_id: "order-2026-00123"
                     amount: "100.00"
                     currency: "USD"
+                    checkoutURL: "https://payment.hexpay.io/019327c6-2058-7901-b234-56789abcdeff"
                     paymentDetails:
                       address: "UQBf_DO8wsBddOcMnGEOyREEHPPKMBL2F26GQFOV7FQdYY_a"
                       coinAmount: "35.782"
@@ -616,6 +617,7 @@ paths:
                     order_id: "order-2026-00123"
                     amount: "100.00"
                     currency: "USD"
+                    checkoutURL: "https://payment.hexpay.io/019327c6-2058-7901-b234-56789abcdeff"
                     paymentDetails:
                       address: "UQBf_DO8wsBddOcMnGEOyREEHPPKMBL2F26GQFOV7FQdYY_a"
                       coinAmount: "35.782"
@@ -643,6 +645,7 @@ paths:
                     order_id: "order-2026-00125"
                     amount: "75.00"
                     currency: "USD"
+                    checkoutURL: "https://payment.hexpay.io/019327c6-2058-7901-b234-56789abcde01"
                     timer:
                       createdAt: "2026-01-20T10:00:00Z"
                       expiresAt: "2026-01-20T10:15:00Z"
@@ -921,7 +924,7 @@ components:
       in: header
       required: false
       description: |
-        Unique UUID v4 key for idempotent request processing. If the server receives
+        Optional UUID key for idempotent request processing. If the server receives
         two requests with the same key within a 24-hour window, the second returns
         the cached response from the first without creating a duplicate resource.
         Generate a fresh key for each logically distinct operation.
@@ -1101,7 +1104,7 @@ components:
           type: object
           description: |
             Arbitrary key-value pairs for merchant use. All values must be strings.
-            Returned on all payment objects and included in webhook payloads.
+            Returned on all payment objects and included in completed-payment webhook payloads.
             Maximum 10 keys; key names up to 64 characters, values up to 512 characters.
           maxProperties: 10
           additionalProperties:
@@ -1116,8 +1119,8 @@ components:
           pattern: '^https://(?!localhost|127\.|0\.0\.0\.0|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)\S+'
           maxLength: 512
           description: |
-            HTTPS URL to which HexPay will POST webhook notifications for this
-            payment's lifecycle events (e.g., transitions to `pending` or `completed`).
+            HTTPS URL to which HexPay will POST a webhook notification when this
+            payment reaches `completed` status.
 
             Requirements:
             - Must use HTTPS. Plain HTTP URLs are rejected.
@@ -1259,7 +1262,7 @@ components:
     PaymentResponse:
       type: object
       description: |
-        Full payment object. Returned by the create, retrieve, list, and cancel endpoints.
+        Full payment object. Returned by the create, retrieve, and list endpoints.
       properties:
         id:
           type: string
@@ -1305,6 +1308,18 @@ components:
           maxLength: 512
           description: Payment description
           example: "Premium subscription — 1 year"
+        metadata:
+          type: object
+          description: |
+            Arbitrary key-value pairs provided at creation time, if any.
+            Included in payment objects and completed-payment webhook payloads.
+          maxProperties: 10
+          additionalProperties:
+            type: string
+            maxLength: 512
+          example:
+            customer_id: "cust_abc123"
+            plan: "premium"
         timer:
           $ref: "#/components/schemas/PaymentTimerResponse"
       required:
