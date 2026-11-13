@@ -2,10 +2,13 @@ FROM node:20-alpine
 
 ARG OPENAPI_TS_VERSION=0.97.1
 ARG CLIENT_FETCH_VERSION=0.13.1
+# openapi-ts needs the TS 5 compiler API; an unpinned peer dep resolves to TS 7, which removed it.
+ARG TYPESCRIPT_VERSION=5.9.3
 
 RUN npm install -g \
         "@hey-api/openapi-ts@${OPENAPI_TS_VERSION}" \
-        "@hey-api/client-fetch@${CLIENT_FETCH_VERSION}"
+        "@hey-api/client-fetch@${CLIENT_FETCH_VERSION}" \
+        "typescript@${TYPESCRIPT_VERSION}"
 
 ENV HOME=/tmp
 # Let configs loaded from /work resolve globally-installed packages
