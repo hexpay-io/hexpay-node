@@ -25,7 +25,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           registry-url: https://registry.npmjs.org
           cache: pnpm
 
@@ -41,10 +41,11 @@ jobs:
 
       - name: Upgrade npm for Trusted Publishing OIDC
         # Trusted Publishing OIDC support on the npm CLI landed in npm 11.5.1
-        # (Aug 2025). Node 20 ships with npm 10.x, which silently skips OIDC
-        # auth on publish and the registry returns 404 as if the package
-        # doesn't exist.
-        run: npm install -g npm@latest
+        # (Aug 2025). Older npm silently skips OIDC auth on publish and the
+        # registry returns 404 as if the package doesn't exist.
+        # Pinned to the 11.x line: npm@latest (12.x) requires Node >=22.22.2
+        # and a new major can drop Node versions without notice.
+        run: npm install -g npm@^11.5.1
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
