@@ -43,10 +43,10 @@ do {
     process.exit(1);
   }
 
-  for (const p of data.payments) {
-    console.log(`${p.id}  ${p.status.padEnd(10)}  ${p.amount} ${p.currency}  ${p.order_id ?? '-'}`);
+  for (const p of data.data) {
+    console.log(`${p.id}  ${p.status.padEnd(10)}  ${p.amount} ${p.currency}  ${p.orderId ?? '-'}`);
   }
-  totalSeen += data.payments.length;
+  totalSeen += data.data.length;
 
   cursor = data.cursor;
 } while (cursor);

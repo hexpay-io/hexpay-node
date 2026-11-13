@@ -34,14 +34,14 @@ export type Error = {
     message: string;
     /**
      * Machine-readable error identifier. Use this in conditional logic to branch
-     * on specific error conditions (e.g., retry on `rate_limit_exceeded`,
+     * on specific error conditions (e.g., retry on `payment_concurrent_limit_exceeded`,
      * surface to user on `payment_not_cancellable`).
      *
      */
     code: string;
     /**
      * The name of the request field that caused the error, using dot notation
-     * for nested fields (e.g., `currency`, `payment_options.methods[0]`).
+     * for nested fields (e.g., `currency`, `paymentOptions.methods`).
      * Present only when the error is attributable to a specific parameter.
      *
      */
@@ -51,32 +51,33 @@ export type Error = {
 /**
  * Request body for creating a new payment. The body is intentionally flat:
  * `amount`, `currency`, and all optional fields are top-level. The only nested
- * structure is `payment_options.methods`, which describes an allowlist of
- * acceptable payment methods.
+ * structure is `paymentOptions.methods`, which restricts the payment methods
+ * offered to the customer.
  *
  */
 export type CreatePaymentRequest = {
     /**
-     * The payment value as a positive decimal string. No leading zeros are
-     * permitted on the integer part (`"007"` is invalid; use `"7"`).
+     * The payment value as a positive decimal string. Zero is not allowed.
+     * No leading zeros are permitted on the integer part (`"007"` is invalid; use `"7"`).
      * For fiat currencies up to 2 decimal places are recommended.
      * For crypto tickers precision depends on the coin.
      *
      */
     amount: string;
     /**
-     * Ticker symbol for the denomination. Accepts fiat codes (e.g. `USD`, `EUR`,
-     * `RUB`) or TON-ecosystem coin tickers (e.g. `TON`, `USDT`).
+     * Ticker symbol for the denomination. Accepts fiat codes (`USD`, `EUR`, `RUB`)
+     * or TON-ecosystem coin tickers (`TON`, `USDT`, `NOT`, `DOGS`, `BUILD`, `BLUM`,
+     * `DUST`, `DYOR`, `STON`, `XAUt0`).
      *
      * This field defines the **unit of value** — it does not determine the coin
-     * the customer pays with. Payment coin is controlled by `payment_options.methods`.
+     * the customer pays with. Payment coin is controlled by `paymentOptions.methods`.
      *
-     * For the full list of accepted values use `GET /v1/payment-methods` (coins)
-     * or refer to the supported fiat codes in your store settings.
+     * Any supported ticker is accepted, regardless of which payment methods are
+     * enabled for your store.
      *
      */
     currency: string;
-    payment_options?: PaymentOptions;
+    paymentOptions?: PaymentOptions;
     /**
      * Time-to-live in seconds. Defines how long the payment remains active
      * from the moment of creation. Once the TTL elapses the payment moves to
@@ -90,10 +91,10 @@ export type CreatePaymentRequest = {
     /**
      * Merchant-defined external order identifier. Use this to correlate a HexPay
      * payment with your internal order or invoice system. Returned on all payment
-     * objects and included in webhook payloads.
+     * objects and included in the webhook payload.
      *
      */
-    order_id?: string;
+    orderId?: string;
     /**
      * Human-readable description of the payment purpose. May be displayed to
      * the customer on the payment page.
@@ -102,8 +103,9 @@ export type CreatePaymentRequest = {
     description?: string;
     /**
      * Arbitrary key-value pairs for merchant use. All values must be strings.
-     * Returned on all payment objects and included in completed-payment webhook payloads.
+     * Returned on all payment objects and included in the webhook payload.
      * Maximum 10 keys; key names up to 64 characters, values up to 512 characters.
+     * Keys are stored as provided and are not renamed.
      *
      */
     metadata?: {
@@ -111,56 +113,71 @@ export type CreatePaymentRequest = {
     };
     /**
      * HTTPS URL to which HexPay will POST a webhook notification when this
-     * payment reaches `completed` status.
+     * payment reaches `completed` status. No webhooks are sent for other statuses.
      *
      * Requirements:
      * - Must use HTTPS. Plain HTTP URLs are rejected.
-     * - Must be publicly reachable from the internet. Loopback addresses
-     * (`localhost`, `127.x.x.x`) and private network ranges (`10.x.x.x`,
-     * `192.168.x.x`, `172.16–31.x.x`) are not allowed.
+     * - Must be publicly reachable from the internet. Non-public addresses are
+     * rejected, and host names that resolve to them are blocked at delivery time.
      * - Make sure your server is configured to accept POST requests at this URL
      * before creating payments.
      *
      */
-    webhookURL?: string;
+    webhookUrl?: string;
+    /**
+     * HTTPS URL of your page (e.g. the order page) that the checkout page links to
+     * once the payment is finished (`completed`, `expired` or `cancelled`), so the
+     * customer can return to your store.
+     *
+     * Requirements:
+     * - Must be an absolute HTTPS URL. Plain HTTP and other schemes are rejected.
+     * - Maximum 512 characters.
+     *
+     * If omitted, the checkout page uses the default HexPay URL.
+     *
+     */
+    redirectUrl?: string;
 };
 
 /**
- * Optional constraints on which payment methods are available at checkout.
+ * Optional restriction on which payment methods are offered at checkout.
  * When omitted entirely, all payment methods enabled for your store are shown
  * and the payment is created in `created` status.
  *
  */
 export type PaymentOptions = {
     /**
-     * Exactly one method filter specifying both `coin` and `chain`.
-     * When provided, the payment is created directly in `pending` status with
-     * `paymentDetails` populated (Preselected).
+     * Payment methods the customer is allowed to pay with.
      *
-     * Omit this field entirely to let the customer select a payment method
+     * Currently exactly one entry with both `coin` and `chain` is supported.
+     * HexPay then selects this method on behalf of the customer: the payment is
+     * created directly in `pending` status with `paymentDetails` populated
+     * (Preselected). Allowing several methods is planned.
+     *
+     * Omit `paymentOptions` entirely to let the customer select a payment method
      * at checkout — payment starts in `created` status (Customer Choice).
      *
      */
     methods?: [
-        MethodFilter
+        MethodRestriction
     ];
 };
 
 /**
- * A method filter specifying exactly which coin and chain to use for payment.
+ * A payment method allowed for this payment, identified by coin and chain.
  * Both `coin` and `chain` are required.
  *
  * Use the exact `symbol` values returned by `GET /v1/payment-methods`.
  * Values are case-sensitive.
  *
  */
-export type MethodFilter = {
+export type MethodRestriction = {
     /**
-     * Coin ticker to match. Must be a coin supported by HexPay on TON.
+     * Coin ticker. Must be a coin supported by HexPay on TON.
      */
     coin: 'BUILD' | 'BLUM' | 'DOGS' | 'DUST' | 'DYOR' | 'NOT' | 'STON' | 'TON' | 'USDT' | 'XAUt0';
     /**
-     * Chain ticker to match. Currently only `TON` is supported.
+     * Chain ticker. Currently only `TON` is supported.
      */
     chain: 'TON';
 };
@@ -175,7 +192,7 @@ export type MethodFilter = {
  * - `expired`   — Payment TTL elapsed without a confirmed transfer. Reachable from
  * **both** `created` (customer never selected a method) and `pending` (customer
  * selected but did not send the transfer in time).
- * - `cancelled` — Canceled by the merchant via `POST /v1/payments/{id}/cancel`.
+ * - `cancelled` — Canceled by the merchant via `POST /v1/payments/{paymentId}/cancel`.
  * Reachable from both `created` and `pending`.
  *
  */
@@ -183,7 +200,7 @@ export type PaymentStatus = 'created' | 'pending' | 'completed' | 'expired' | 'c
 
 /**
  * Lightweight response containing only the current status of a payment.
- * Use `GET /v1/payments/{paymentID}` when you also need the address,
+ * Use `GET /v1/payments/{paymentId}` when you also need the address,
  * amount, or timer details.
  *
  */
@@ -191,6 +208,10 @@ export type PaymentStatusResponse = {
     status: PaymentStatus;
 };
 
+/**
+ * Result of a cancellation. Contains only the new status, always `cancelled`.
+ *
+ */
 export type PaymentCancelResponse = {
     status: PaymentStatus;
 };
@@ -202,11 +223,11 @@ export type PaymentListResponse = {
     /**
      * Array of payment objects for the current page.
      */
-    payments: Array<PaymentResponse>;
+    data: Array<PaymentResponse>;
     /**
      * Opaque pagination cursor. Present only when there are more pages of results.
-     * Pass this value as the `cursor` query parameter to retrieve the next page.
-     * When absent, the current page is the last one.
+     * Pass this value unchanged as the `cursor` query parameter to retrieve the
+     * next page. When absent, the current page is the last one.
      *
      */
     cursor?: string;
@@ -240,18 +261,17 @@ export type PaymentResponse = {
      * customer to this URL to let them complete the payment.
      *
      */
-    checkoutURL: string;
+    checkoutUrl: string;
     /**
      * Merchant-defined external order identifier, if provided at creation.
      */
-    order_id?: string;
+    orderId?: string;
     /**
-     * Payment description
+     * Payment description, if provided at creation.
      */
     description?: string;
     /**
-     * Arbitrary key-value pairs provided at creation time, if any.
-     * Included in payment objects and completed-payment webhook payloads.
+     * Key-value pairs provided at creation time, if any.
      *
      */
     metadata?: {
@@ -276,15 +296,19 @@ export type PaymentTimerResponse = {
      */
     expiresAt: string;
     /**
-     * Timestamp (RFC 3339, UTC) at which the payment has been paid
+     * Timestamp (RFC 3339, UTC) at which the payment has been paid.
+     * Present only when status is `completed`.
      *
      */
     paidAt?: string;
 };
 
 /**
- * Cryptocurrency payment instructions. Populated when the payment transitions
- * from `created` to `pending`.
+ * Cryptocurrency payment instructions. Absent while status is `created`.
+ * Populated when the payment transitions to `pending` — either because the
+ * customer selected a method, or because a single exact method was
+ * preselected at creation. Kept for `completed`, and for `expired` and
+ * `cancelled` payments that had reached `pending`.
  *
  * The customer must send exactly `coinAmount` of `coin` to `address` on the
  * TON blockchain.
@@ -321,7 +345,7 @@ export type CoinResponse = {
     name: string;
     /**
      * Ticker symbol. Use this value as the `coin` field in
-     * `payment_options.methods` when creating payments.
+     * `paymentOptions.methods` when creating payments.
      *
      */
     symbol: 'BUILD' | 'BLUM' | 'DOGS' | 'DUST' | 'DYOR' | 'NOT' | 'STON' | 'TON' | 'USDT' | 'XAUt0';
@@ -341,7 +365,7 @@ export type ChainResponse = {
     name: string;
     /**
      * Ticker symbol. Use this value as the `chain` field in
-     * `payment_options.methods` when creating payments.
+     * `paymentOptions.methods` when creating payments.
      *
      */
     symbol: 'TON';
@@ -352,9 +376,9 @@ export type ChainResponse = {
 };
 
 /**
- * List of all payment methods currently enabled for the store, wrapped in a
- * consistent data envelope. Use `coin.symbol` and `chain.symbol` from each entry
- * as filter inputs in `payment_options.methods` when creating payments.
+ * Payment methods currently enabled for your store, wrapped in a consistent
+ * data envelope. Use `coin.symbol` and `chain.symbol` from each entry in
+ * `paymentOptions.methods` when creating payments.
  *
  */
 export type PaymentMethodListResponse = {
@@ -367,7 +391,7 @@ export type PaymentMethodListResponse = {
 /**
  * A single payment method — a coin + chain combination accepted by the store.
  * The `coin.symbol` / `chain.symbol` pair uniquely identifies the method for
- * use in `payment_options.methods` filters.
+ * use in `paymentOptions.methods`.
  *
  */
 export type PaymentMethodResponse = {
@@ -380,10 +404,46 @@ export type PaymentMethodResponse = {
 };
 
 /**
+ * Body of the webhook HexPay POSTs to `webhookUrl` when a payment reaches
+ * `completed`. Signed with Ed25519; the signature is in the `X-Signature`
+ * header and the key ID in `X-Signature-Kid`.
+ *
+ */
+export type WebhookRequest = {
+    payload: WebhookPayload;
+    /**
+     * Signing timestamp (RFC 3339, UTC).
+     */
+    signAt: string;
+};
+
+export type WebhookPayload = {
+    /**
+     * Payment identifier.
+     */
+    paymentId: string;
+    /**
+     * Payment status. Always `completed`.
+     */
+    status: 'completed';
+    /**
+     * Merchant order identifier from the create request, or `null`.
+     */
+    orderId: string | null;
+    /**
+     * Metadata from the create request, or `null`.
+     */
+    metadata: {
+        [key: string]: string;
+    } | null;
+};
+
+/**
  * Optional UUID key for idempotent request processing. If the server receives
  * two requests with the same key within a 24-hour window, the second returns
- * the cached response from the first without creating a duplicate resource.
- * Generate a fresh key for each logically distinct operation.
+ * the stored response from the first without creating a duplicate resource.
+ * Responses with status 401, 403, 404, 408, 409, 429, 500, 502, 503 or 504 are
+ * not stored. Generate a fresh key for each logically distinct operation.
  *
  */
 export type IdempotencyKey = string;
@@ -405,7 +465,8 @@ export type ListPaymentsData = {
         limit?: number;
         /**
          * Pagination cursor. Pass the value of `cursor` from the previous
-         * response to retrieve the next page of results.
+         * response unchanged to retrieve the next page of results.
+         * The cursor is an opaque string; do not parse or construct it.
          *
          */
         cursor?: string;
@@ -452,8 +513,9 @@ export type CreatePaymentData = {
         /**
          * Optional UUID key for idempotent request processing. If the server receives
          * two requests with the same key within a 24-hour window, the second returns
-         * the cached response from the first without creating a duplicate resource.
-         * Generate a fresh key for each logically distinct operation.
+         * the stored response from the first without creating a duplicate resource.
+         * Responses with status 401, 403, 404, 408, 409, 429, 500, 502, 503 or 504 are
+         * not stored. Generate a fresh key for each logically distinct operation.
          *
          */
         'X-Idempotency-Key'?: string;
@@ -473,11 +535,11 @@ export type CreatePaymentErrors = {
      */
     401: ErrorResponse;
     /**
-     * A referenced resource (e.g., currency) was not found.
+     * The preselected payment method is not enabled for your store.
      */
     404: ErrorResponse;
     /**
-     * Rate limit or concurrent payment quota exceeded.
+     * Concurrent active payment quota exceeded.
      */
     429: ErrorResponse;
     /**
@@ -492,7 +554,7 @@ export type CreatePaymentResponses = {
     /**
      * Payment created successfully. Returns the full payment object.
      * Status is `created` unless a single exact method was specified via
-     * `payment_options.methods`, in which case status is `pending` and
+     * `paymentOptions.methods`, in which case status is `pending` and
      * `paymentDetails` is already populated.
      *
      */
@@ -507,15 +569,15 @@ export type GetPaymentData = {
         /**
          * Unique identifier of the payment (UUID).
          */
-        paymentID: string;
+        paymentId: string;
     };
     query?: never;
-    url: '/v1/payments/{paymentID}';
+    url: '/v1/payments/{paymentId}';
 };
 
 export type GetPaymentErrors = {
     /**
-     * The provided paymentID is not a valid UUID.
+     * The provided paymentId is not a valid UUID.
      */
     400: ErrorResponse;
     /**
@@ -549,15 +611,15 @@ export type GetPaymentStatusData = {
         /**
          * Unique identifier of the payment (UUID).
          */
-        paymentID: string;
+        paymentId: string;
     };
     query?: never;
-    url: '/v1/payments/{paymentID}/status';
+    url: '/v1/payments/{paymentId}/status';
 };
 
 export type GetPaymentStatusErrors = {
     /**
-     * The provided paymentID is not a valid UUID.
+     * The provided paymentId is not a valid UUID.
      */
     400: ErrorResponse;
     /**
@@ -591,8 +653,9 @@ export type CancelPaymentData = {
         /**
          * Optional UUID key for idempotent request processing. If the server receives
          * two requests with the same key within a 24-hour window, the second returns
-         * the cached response from the first without creating a duplicate resource.
-         * Generate a fresh key for each logically distinct operation.
+         * the stored response from the first without creating a duplicate resource.
+         * Responses with status 401, 403, 404, 408, 409, 429, 500, 502, 503 or 504 are
+         * not stored. Generate a fresh key for each logically distinct operation.
          *
          */
         'X-Idempotency-Key'?: string;
@@ -601,10 +664,10 @@ export type CancelPaymentData = {
         /**
          * Unique identifier of the payment (UUID).
          */
-        paymentID: string;
+        paymentId: string;
     };
     query?: never;
-    url: '/v1/payments/{paymentID}/cancel';
+    url: '/v1/payments/{paymentId}/cancel';
 };
 
 export type CancelPaymentErrors = {
@@ -630,7 +693,7 @@ export type CancelPaymentError = CancelPaymentErrors[keyof CancelPaymentErrors];
 
 export type CancelPaymentResponses = {
     /**
-     * Payment cancelled successfully.
+     * Payment cancelled successfully. Only the status is returned.
      *
      */
     200: PaymentCancelResponse;

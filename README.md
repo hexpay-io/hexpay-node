@@ -49,7 +49,7 @@ const { data, error } = await createPayment({
   body: {
     amount: '100.00',
     currency: 'USD',
-    order_id: 'order-2026-00123',
+    orderId: 'order-2026-00123',
   },
   headers: {
     'X-Idempotency-Key': randomUUID(),
@@ -61,7 +61,7 @@ if (error) {
   process.exit(1);
 }
 
-console.log('Created payment', data.id, '→', data.checkoutURL);
+console.log('Created payment', data.id, '→', data.checkoutUrl);
 ```
 
 ## Authentication
@@ -108,7 +108,7 @@ touching `data`:
 
 ```ts
 const { data, error, response } = await getPayment({
-  path: { paymentID: 'abc-123' },
+  path: { paymentId: 'abc-123' },
 });
 
 if (error) {

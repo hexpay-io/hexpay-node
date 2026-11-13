@@ -6,7 +6,7 @@
  *
  * Run:
  *   export HEXPAY_TOKEN="..."
- *   pnpm tsx examples/cancelPayment.ts <paymentID>
+ *   pnpm tsx examples/cancelPayment.ts <paymentId>
  */
 import { randomUUID } from 'node:crypto';
 import { client } from '../src/client.gen.js';
@@ -18,9 +18,9 @@ if (!token) {
   process.exit(1);
 }
 
-const paymentID = process.argv[2];
-if (!paymentID) {
-  console.error('Usage: pnpm tsx examples/cancelPayment.ts <paymentID>');
+const paymentId = process.argv[2];
+if (!paymentId) {
+  console.error('Usage: pnpm tsx examples/cancelPayment.ts <paymentId>');
   process.exit(1);
 }
 
@@ -30,7 +30,7 @@ client.setConfig({
 });
 
 const { data, error, response } = await cancelPayment({
-  path: { paymentID },
+  path: { paymentId },
   headers: {
     'X-Idempotency-Key': randomUUID(),
   },
