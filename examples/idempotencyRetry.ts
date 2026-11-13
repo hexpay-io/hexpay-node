@@ -46,8 +46,8 @@ const idempotencyKey = randomUUID();
 const body = {
   amount: '100.00',
   currency: 'USD',
-  payment_options: { methods: [{ coin: 'USDT', chain: 'TON' }] },
-  order_id: `order-${Date.now()}`,
+  paymentOptions: { methods: [{ coin: 'USDT', chain: 'TON' }] },
+  orderId: `order-${Date.now()}`,
 } as const;
 
 function backoffMs(attempt: number, retryAfterHeader: string | null): number {

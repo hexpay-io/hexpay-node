@@ -50,19 +50,20 @@ export const listPayments = <ThrowOnError extends boolean = false>(options?: Opt
  * ---
  *
  * ### Preselected
- * Pass `payment_options.methods` with **exactly one entry** containing **both** `coin`
- * and `chain`. The server resolves the address immediately and returns the payment in
- * `pending` status with `paymentDetails` populated. The customer proceeds straight to
- * the deposit screen without any method selection step.
+ * Pass `paymentOptions.methods` with **exactly one entry** containing **both** `coin`
+ * and `chain`. HexPay selects this method on behalf of the customer, resolves the
+ * address immediately and returns the payment in `pending` status with
+ * `paymentDetails` populated. The customer proceeds straight to the deposit screen
+ * without any method selection step.
  *
  * ### Customer Choice
- * Omit `payment_options`. All store-enabled payment methods are offered to the customer
+ * Omit `paymentOptions`. All store-enabled payment methods are offered to the customer
  * at checkout. The payment starts in `created` status.
  *
  * ---
  *
  * ### Supported combinations
- * | `currency` | `payment_options.methods`          | Initial status | `paymentDetails` |
+ * | `currency` | `paymentOptions.methods`           | Initial status | `paymentDetails` |
  * |------------|------------------------------------|----------------|------------------|
  * | `USD`      | *(omitted)*                        | `created`      | absent           |
  * | `TON`      | *(omitted)*                        | `created`      | absent           |
@@ -101,7 +102,7 @@ export const createPayment = <ThrowOnError extends boolean = false>(options: Opt
  */
 export const getPayment = <ThrowOnError extends boolean = false>(options: Options<GetPaymentData, ThrowOnError>) => (options.client ?? client).get<GetPaymentResponses, GetPaymentErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/v1/payments/{paymentID}',
+    url: '/v1/payments/{paymentId}',
     ...options
 });
 
@@ -115,14 +116,15 @@ export const getPayment = <ThrowOnError extends boolean = false>(options: Option
  */
 export const getPaymentStatus = <ThrowOnError extends boolean = false>(options: Options<GetPaymentStatusData, ThrowOnError>) => (options.client ?? client).get<GetPaymentStatusResponses, GetPaymentStatusErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/v1/payments/{paymentID}/status',
+    url: '/v1/payments/{paymentId}/status',
     ...options
 });
 
 /**
  * Cancel a payment
  *
- * Cancels a payment and returns the updated status `cancelled`.
+ * Cancels a payment. The response contains only the new status, `cancelled`.
+ * Use `GET /v1/payments/{paymentId}` if you need the full payment object.
  *
  * Cancellation is permitted from `created` or `pending` status only. Payments
  * already in a terminal state (`completed`, `expired`, or `cancelled`) cannot
@@ -131,18 +133,22 @@ export const getPaymentStatus = <ThrowOnError extends boolean = false>(options: 
  */
 export const cancelPayment = <ThrowOnError extends boolean = false>(options: Options<CancelPaymentData, ThrowOnError>) => (options.client ?? client).post<CancelPaymentResponses, CancelPaymentErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/v1/payments/{paymentID}/cancel',
+    url: '/v1/payments/{paymentId}/cancel',
     ...options
 });
 
 /**
  * List payment methods
  *
- * Retrieves all payment methods enabled for your store. Each entry represents
- * a unique coin + chain combination that your store accepts.
+ * Retrieves the payment methods enabled for your store. Each entry represents
+ * a unique coin + chain combination that your store accepts. Use it, for example,
+ * to show available payment options on your website.
+ *
+ * Only your store's enabled methods are returned, not every coin supported by
+ * HexPay.
  *
  * Use `coin.symbol` and `chain.symbol` values from this response as inputs for
- * the `coin` and `chain` fields in `payment_options.methods` when creating a payment.
+ * the `coin` and `chain` fields in `paymentOptions.methods` when creating a payment.
  *
  */
 export const listPaymentMethods = <ThrowOnError extends boolean = false>(options?: Options<ListPaymentMethodsData, ThrowOnError>) => (options?.client ?? client).get<ListPaymentMethodsResponses, ListPaymentMethodsErrors, ThrowOnError>({

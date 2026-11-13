@@ -10,7 +10,7 @@
  *
  * Run:
  *   export HEXPAY_TOKEN="..."
- *   pnpm tsx examples/pollPaymentStatus.ts <paymentID>
+ *   pnpm tsx examples/pollPaymentStatus.ts <paymentId>
  */
 import { setTimeout as sleep } from 'node:timers/promises';
 import { client } from '../src/client.gen.js';
@@ -26,9 +26,9 @@ if (!token) {
   process.exit(1);
 }
 
-const paymentID = process.argv[2];
-if (!paymentID) {
-  console.error('Usage: pnpm tsx examples/pollPaymentStatus.ts <paymentID>');
+const paymentId = process.argv[2];
+if (!paymentId) {
+  console.error('Usage: pnpm tsx examples/pollPaymentStatus.ts <paymentId>');
   process.exit(1);
 }
 
@@ -41,7 +41,7 @@ const deadline = Date.now() + MAX_DURATION_MS;
 
 while (Date.now() < deadline) {
   const { data, error, response } = await getPaymentStatus({
-    path: { paymentID },
+    path: { paymentId },
   });
 
   if (error) {

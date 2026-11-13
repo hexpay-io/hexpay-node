@@ -2,7 +2,7 @@
  * List all payment methods enabled for the store.
  *
  * Each entry is a unique coin + chain combination. Use the `coin.symbol` and
- * `chain.symbol` values when populating `payment_options.methods` on
+ * `chain.symbol` values when populating `paymentOptions.methods` on
  * createPayment().
  *
  * Run:

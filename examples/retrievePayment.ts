@@ -3,7 +3,7 @@
  *
  * Run:
  *   export HEXPAY_TOKEN="..."
- *   pnpm tsx examples/retrievePayment.ts <paymentID>
+ *   pnpm tsx examples/retrievePayment.ts <paymentId>
  */
 import { client } from '../src/client.gen.js';
 import { getPayment } from '../src/index.js';
@@ -14,9 +14,9 @@ if (!token) {
   process.exit(1);
 }
 
-const paymentID = process.argv[2];
-if (!paymentID) {
-  console.error('Usage: pnpm tsx examples/retrievePayment.ts <paymentID>');
+const paymentId = process.argv[2];
+if (!paymentId) {
+  console.error('Usage: pnpm tsx examples/retrievePayment.ts <paymentId>');
   process.exit(1);
 }
 
@@ -26,7 +26,7 @@ client.setConfig({
 });
 
 const { data, error, response } = await getPayment({
-  path: { paymentID },
+  path: { paymentId },
 });
 
 if (error) {

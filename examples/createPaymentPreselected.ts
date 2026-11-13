@@ -1,7 +1,7 @@
 /**
  * Create a payment with a preselected coin/chain.
  *
- * Pass exactly one entry in `payment_options.methods` with both `coin` and
+ * Pass exactly one entry in `paymentOptions.methods` with both `coin` and
  * `chain`. The server resolves the deposit address immediately and returns
  * the payment in `pending` status with `paymentDetails` populated — the
  * customer skips the method-selection screen.
@@ -29,11 +29,11 @@ const { data, error, response } = await createPayment({
   body: {
     amount: '100.00',
     currency: 'USD',
-    payment_options: {
+    paymentOptions: {
       methods: [{ coin: 'USDT', chain: 'TON' }],
     },
-    order_id: `order-${Date.now()}`,
-    webhookURL: 'https://merchant.example.com/webhooks/hexpay',
+    orderId: `order-${Date.now()}`,
+    webhookUrl: 'https://merchant.example.com/webhooks/hexpay',
   },
   headers: {
     'X-Idempotency-Key': randomUUID(),
@@ -48,7 +48,7 @@ if (error) {
 console.log('Created payment:');
 console.log('  id:          ', data.id);
 console.log('  status:      ', data.status);
-console.log('  checkoutURL: ', data.checkoutURL);
+console.log('  checkoutUrl: ', data.checkoutUrl);
 
 if (data.paymentDetails) {
   console.log('  address:     ', data.paymentDetails.address);

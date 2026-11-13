@@ -1,7 +1,7 @@
 /**
  * Create a payment where the customer picks the coin/chain at checkout.
  *
- * Omit `payment_options.methods` and the API will offer every method enabled
+ * Omit `paymentOptions.methods` and the API will offer every method enabled
  * for the store. The payment starts in `created` status; once the customer
  * selects a method, it transitions to `pending` with `paymentDetails` populated.
  *
@@ -28,8 +28,8 @@ const { data, error, response } = await createPayment({
   body: {
     amount: '100.00',
     currency: 'USD',
-    order_id: `order-${Date.now()}`,
-    webhookURL: 'https://merchant.example.com/webhooks/hexpay',
+    orderId: `order-${Date.now()}`,
+    webhookUrl: 'https://merchant.example.com/webhooks/hexpay',
   },
   headers: {
     'X-Idempotency-Key': randomUUID(),
@@ -44,4 +44,4 @@ if (error) {
 console.log('Created payment:');
 console.log('  id:          ', data.id);
 console.log('  status:      ', data.status);
-console.log('  checkoutURL: ', data.checkoutURL);
+console.log('  checkoutUrl: ', data.checkoutUrl);
